@@ -81,7 +81,7 @@ final class VideoPlayer {
         // Initialize Mux Player Monitor
         muxStatsExoPlayer = new MuxStatsExoPlayer(
             context, 
-            Objects.requireNonNull(data.get("rfk55ite62vvvdt2v0loq1a63")), 
+            Objects.requireNonNull(data.get("muxEnvKey")), 
             exoPlayer, 
             customerData
         );
