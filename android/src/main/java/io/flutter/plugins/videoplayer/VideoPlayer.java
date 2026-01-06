@@ -57,35 +57,64 @@ final class VideoPlayer {
 
     // ... buildHttpDataSourceFactory and buildMediaSource methods ...
 
-    private void initializeMUXDataAnalytics(Context context, String videoURL, Map<String, String> data) {
-        // Set Video Data
-        customerData.getCustomerVideoData().setVideoTitle(
-            data.get("videoTitle") == null ? "STAGE-ANDROID" : data.get("videoTitle")
-        );
-        customerData.getCustomerVideoData().setVideoSourceUrl(videoURL);
-
-        // Set View Data
-        customerData.setCustomerViewData(new CustomerViewData());
-        customerData.getCustomerViewData().setViewSessionId(
-            data.get("sessionID") == null ? "STAGE-ANDROID" : data.get("sessionID")
-        );
-
-        // Set Custom Data (MAX 5)
-        customerData.setCustomData(new CustomData());
-        customerData.getCustomData().setCustomData1(data.getOrDefault("customData1", ""));
-        customerData.getCustomData().setCustomData2(data.getOrDefault("customData2", ""));
-        customerData.getCustomData().setCustomData3(data.getOrDefault("customData3", ""));
-        customerData.getCustomData().setCustomData4(data.getOrDefault("customData4", ""));
-        customerData.getCustomData().setCustomData5(data.getOrDefault("customData5", ""));
-
-        // Initialize Mux Player Monitor
-        muxStatsExoPlayer = new MuxStatsExoPlayer(
-            context, 
-            Objects.requireNonNull(data.get("muxEnvKey")), 
-            exoPlayer, 
-            customerData
-        );
+    private void initializeMUXDataAnalytics(Context context, String videoURL, Map<String, String> headers) {
+    // 1. Get and Validate Mux Environment Key
+    String muxEnvKey = headers.get("muxEnvKey");
+    if (muxEnvKey == null || muxEnvKey.isEmpty()) {
+        android.util.Log.e("VideoPlayer", "Mux SDK: ❌ Environment key not found in headers");
+        android.util.Log.e("VideoPlayer", "Mux SDK: Available headers: " + headers.keySet());
+        return;
     }
+
+    android.util.Log.d("VideoPlayer", "Mux SDK: Initializing with env key: " +
+        muxEnvKey.substring(0, Math.min(10, muxEnvKey.length())) + "...");
+
+    // 2. Initialize Video Data (Check Short Codes from Flutter)
+    CustomerVideoData videoData = new CustomerVideoData();
+
+    // Video Title: Check "vtt" (short code) -> "videoTitle" -> "cvd_video_title"
+    String videoTitle = headers.get("vtt");
+    if (videoTitle == null || videoTitle.isEmpty()) videoTitle = headers.get("videoTitle");
+    if (videoTitle == null || videoTitle.isEmpty()) videoTitle = headers.get("cvd_video_title");
+    videoData.setVideoTitle(videoTitle != null ? videoTitle : "STAGE-ANDROID");
+
+    videoData.setVideoSourceUrl(videoURL);
+
+    // Video ID: Check "vid" (short code) -> "videoId" -> "cvd_video_id"
+    String videoId = headers.get("vid");
+    if (videoId == null || videoId.isEmpty()) videoId = headers.get("videoId");
+    if (videoId == null || videoId.isEmpty()) videoId = headers.get("cvd_video_id");
+    if (videoId != null && !videoId.isEmpty()) {
+        videoData.setVideoId(videoId);
+    }
+
+    // Video Duration: Check "vdu" (short code)
+    String videoDuration = headers.get("vdu");
+    if (videoDuration != null && !videoDuration.isEmpty()) {
+        try {
+            videoData.setVideoDuration(Long.parseLong(videoDuration));
+        } catch (NumberFormatException e) {
+            android.util.Log.w("VideoPlayer", "Mux SDK: Invalid video duration: " + videoDuration);
+        }
+    }
+
+    // 3. Set View Data (Session Tracking)
+    CustomerViewData viewData = new CustomerViewData();
+    String sessionId = headers.get("sessionID");
+    viewData.setViewSessionId(sessionId != null ? sessionId : "STAGE-ANDROID");
+
+    // 4. Update the main customerData object
+    customerData.setCustomerVideoData(videoData);
+    customerData.setCustomerViewData(viewData);
+
+    // 5. Initialize Mux Player Monitor
+    muxStatsExoPlayer = new MuxStatsExoPlayer(
+        context, 
+        muxEnvKey, 
+        exoPlayer, 
+        customerData
+    );
+}
 
     private void setUpVideoPlayer(ExoPlayer exoPlayer, QueuingEventSink eventSink) {
         this.exoPlayer = exoPlayer;
