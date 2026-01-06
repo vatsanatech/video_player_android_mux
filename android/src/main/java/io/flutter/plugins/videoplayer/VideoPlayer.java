@@ -1,6 +1,38 @@
 // ... existing imports ...
 import java.util.Objects;
 // Add Mux imports here (Example: import com.mux.stats.sdk.muxstats.MuxStatsExoPlayer;)
+package io.flutter.plugins.videoplayer;
+
+import android.content.Context;
+import android.net.Uri;
+import android.util.Log;
+import android.view.Surface;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.VisibleForTesting;
+
+import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.audio.AudioAttributes;
+import com.google.android.exoplayer2.source.MediaSource;
+import com.google.android.exoplayer2.upstream.DataSource;
+import com.google.android.exoplayer2.upstream.DefaultDataSource;
+import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
+
+// Mux SDK Imports
+import com.mux.stats.sdk.muxstats.MuxStatsExoPlayer;
+import com.mux.stats.sdk.muxstats.CustomerData;
+import com.mux.stats.sdk.muxstats.CustomerVideoData;
+import com.mux.stats.sdk.muxstats.CustomerViewData;
+import com.mux.stats.sdk.muxstats.CustomData;
+
+// Flutter Imports
+import io.flutter.plugin.common.EventChannel;
+import io.flutter.view.TextureRegistry;
+
+import java.util.Map;
+import java.util.Objects;
 
 final class VideoPlayer {
     private static final String FORMAT_SS = "ss";
