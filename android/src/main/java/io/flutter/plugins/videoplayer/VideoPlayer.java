@@ -50,7 +50,7 @@ final class VideoPlayer {
         setUpVideoPlayer(exoPlayer, new QueuingEventSink());
 
         // Initialize MUX if enabled in headers
-        if (Objects.equals(httpHeaders.get("vtt"), "true")) {
+        if (Objects.equals(httpHeaders.get("enableMuxAnalytics"), "true")) {
             initializeMUXDataAnalytics(context, uri.toString(), httpHeaders);
         }
     }
@@ -100,7 +100,7 @@ final class VideoPlayer {
 
     // 3. Set View Data (Session Tracking)
     CustomerViewData viewData = new CustomerViewData();
-    String sessionId = headers.get("sessionID");
+    String sessionId = headers.get("xseid");
     viewData.setViewSessionId(sessionId != null ? sessionId : "STAGE-ANDROID");
 
     // 4. Update the main customerData object
