@@ -50,7 +50,7 @@ final class VideoPlayer {
         setUpVideoPlayer(exoPlayer, new QueuingEventSink());
 
         // Initialize MUX if enabled in headers
-        if (Objects.equals(httpHeaders.get("enableMuxAnalytics"), "true")) {
+        if (Objects.equals(httpHeaders.get("vtt"), "true")) {
             initializeMUXDataAnalytics(context, uri.toString(), httpHeaders);
         }
     }
