@@ -105,7 +105,7 @@ final class VideoPlayer {
     CustomerVideoData videoData = new CustomerVideoData();
 
     // Video Title: Check "vtt" (short code) -> "videoTitle" -> "cvd_video_title"
-    String videoTitle = headers.get("vtt");
+    String videoTitle = headers.get("enableMuxAnalytics");
     if (videoTitle == null || videoTitle.isEmpty()) videoTitle = headers.get("videoTitle");
     if (videoTitle == null || videoTitle.isEmpty()) videoTitle = headers.get("cvd_video_title");
     videoData.setVideoTitle(videoTitle != null ? videoTitle : "STAGE-ANDROID");
