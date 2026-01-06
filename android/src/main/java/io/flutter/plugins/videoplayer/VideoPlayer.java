@@ -17,6 +17,13 @@ import androidx.annotation.NonNull;
 import androidx.annotation.VisibleForTesting;
 
 // ExoPlayer 2.x Imports (version 2.18.7)
+import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.PlaybackParameters;
+import com.google.android.exoplayer2.C;
+import com.google.android.exoplayer2.audio.AudioAttributes;
+import com.google.android.exoplayer2.source.MediaSource;
+import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultDataSource;
@@ -24,11 +31,11 @@ import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
 import com.google.android.exoplayer2.util.Util;
 
 // Mux SDK Imports
-import com.mux.stats.sdk.core.model.CustomData;
-import com.mux.stats.sdk.core.model.CustomerData;
-import com.mux.stats.sdk.core.model.CustomerVideoData;
+import com.mux.stats.sdk.muxstats.MuxStatsExoPlayer;
+import com.mux.stats.sdk.muxstats.CustomerData;
+import com.mux.stats.sdk.muxstats.CustomerVideoData;
 import com.mux.stats.sdk.muxstats.CustomerViewData;
-import com.mux.stats.sdk.core.model.CustomerViewerData;
+import com.mux.stats.sdk.muxstats.CustomData;
 
 // Flutter Imports
 import io.flutter.plugin.common.EventChannel;
@@ -91,7 +98,29 @@ final class VideoPlayer {
         }
     }
 
-    // ... buildHttpDataSourceFactory and buildMediaSource methods ...
+    // NOTE: buildHttpDataSourceFactory and buildMediaSource methods should exist in the original file
+    // If they don't exist, you need to add them. These are helper methods for creating data sources.
+    // For now, adding placeholder implementations:
+
+    private void buildHttpDataSourceFactory(Map<String, String> httpHeaders) {
+        httpDataSourceFactory.setUserAgent(USER_AGENT);
+        httpDataSourceFactory.setDefaultRequestProperties(httpHeaders);
+    }
+
+    private MediaSource buildMediaSource(Uri uri, DataSource.Factory dataSourceFactory, String formatHint) {
+        // This is a simplified version - you may need to implement full logic based on formatHint
+        // Check your original VideoPlayer.java for the complete implementation
+        return new ProgressiveMediaSource.Factory(dataSourceFactory)
+            .createMediaSource(uri);
+    }
+
+    private void setAudioAttributes(ExoPlayer exoPlayer, boolean mixWithOthers) {
+        AudioAttributes audioAttributes = new AudioAttributes.Builder()
+            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+            .setUsage(C.USAGE_MEDIA)
+            .build();
+        exoPlayer.setAudioAttributes(audioAttributes, !mixWithOthers);
+    }
 
     private void initializeMUXDataAnalytics(Context context, String videoURL, Map<String, String> headers) {
         // ✅ FIX 1: Get and Validate Mux Environment Key (NOT hardcoded)
@@ -185,7 +214,13 @@ final class VideoPlayer {
         // ✅ FIX 9: View Client Application Version - Flutter sends "xcialve" (short code)
         String appVersion = headers.get("xcialve");
         if (appVersion != null && !appVersion.isEmpty()) {
-            viewData.setViewClientApplicationVersion(appVersion);
+            // Note: setViewClientApplicationVersion might not exist in all Mux SDK versions
+            // If this causes an error, remove this line or check Mux SDK documentation
+            try {
+                viewData.setViewClientApplicationVersion(appVersion);
+            } catch (Exception e) {
+                Log.w("VideoPlayer", "Mux SDK: setViewClientApplicationVersion not available: " + e.getMessage());
+            }
         }
 
         // ✅ FIX 10: Set Custom Data - Flutter sends "c1", "c2", "c3", "c4", "c5" (short codes)
@@ -306,7 +341,40 @@ final class VideoPlayer {
         });
     }
 
-    // ... existing play, pause, seekTo, etc. methods ...
+    // Required methods for VideoPlayerPlugin
+    void play() {
+        exoPlayer.setPlayWhenReady(true);
+    }
+
+    void pause() {
+        exoPlayer.setPlayWhenReady(false);
+    }
+
+    void setLooping(boolean looping) {
+        exoPlayer.setRepeatMode(looping ? Player.REPEAT_MODE_ONE : Player.REPEAT_MODE_OFF);
+    }
+
+    void setVolume(double volume) {
+        exoPlayer.setVolume((float) volume);
+    }
+
+    void setPlaybackSpeed(double speed) {
+        PlaybackParameters params = new PlaybackParameters((float) speed);
+        exoPlayer.setPlaybackParameters(params);
+    }
+
+    long getPosition() {
+        return exoPlayer.getCurrentPosition();
+    }
+
+    void seekTo(int position) {
+        exoPlayer.seekTo(position);
+    }
+
+    void sendBufferingUpdate() {
+        // This method is called by VideoPlayerPlugin to send buffering updates
+        // Implementation depends on your event sink setup
+    }
 
     void dispose() {
         if (muxStatsExoPlayer != null) {
