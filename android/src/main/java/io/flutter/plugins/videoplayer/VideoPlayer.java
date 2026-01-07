@@ -1,47 +1,45 @@
-// Complete Fixed VideoPlayer.java
-// Repository: https://github.com/vatsanatech/video_player_android_mux
-// File Path: android/src/main/java/io/flutter/plugins/videoplayer/VideoPlayer.java
-//
-// ALL IMPORTS ADDED + ALL FIXES APPLIED
 
 package io.flutter.plugins.videoplayer;
 
-// Android Imports
+import static com.google.android.exoplayer2.Player.REPEAT_MODE_ALL;
+import static com.google.android.exoplayer2.Player.REPEAT_MODE_OFF;
+
 import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
 import android.view.Surface;
-
-// AndroidX Imports
 import androidx.annotation.NonNull;
 import androidx.annotation.VisibleForTesting;
-
-// ExoPlayer 2.x Imports (version 2.18.7)
-import com.google.android.exoplayer2.ExoPlayer;
-import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.PlaybackParameters;
 import com.google.android.exoplayer2.C;
+import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.Format;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.PlaybackException;
+import com.google.android.exoplayer2.PlaybackParameters;
+import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.audio.AudioAttributes;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
+import com.google.android.exoplayer2.source.dash.DashMediaSource;
+import com.google.android.exoplayer2.source.dash.DefaultDashChunkSource;
+import com.google.android.exoplayer2.source.hls.HlsMediaSource;
+import com.google.android.exoplayer2.source.smoothstreaming.DefaultSsChunkSource;
 import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultDataSource;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
 import com.google.android.exoplayer2.util.Util;
-
-// Mux SDK Imports
+import com.mux.stats.sdk.core.model.CustomData;
+import com.mux.stats.sdk.core.model.CustomerData;
+import com.mux.stats.sdk.core.model.CustomerVideoData;
+import com.mux.stats.sdk.core.model.CustomerViewData;
 import com.mux.stats.sdk.muxstats.MuxStatsExoPlayer;
-import com.mux.stats.sdk.muxstats.CustomerData;
-import com.mux.stats.sdk.muxstats.CustomerVideoData;
-import com.mux.stats.sdk.muxstats.CustomerViewData;
-import com.mux.stats.sdk.muxstats.CustomData;
-
-// Flutter Imports
 import io.flutter.plugin.common.EventChannel;
 import io.flutter.view.TextureRegistry;
-
-// Java Imports
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -67,24 +65,25 @@ final class VideoPlayer {
     private CustomerData customerData = new CustomerData();
 
     VideoPlayer(
-        Context context,
-        EventChannel eventChannel,
-        TextureRegistry.SurfaceTextureEntry textureEntry,
-        String dataSource,
-        String formatHint,
-        @NonNull Map<String, String> httpHeaders,
-        VideoPlayerOptions options) {
+            Context context,
+            EventChannel eventChannel,
+            TextureRegistry.SurfaceTextureEntry textureEntry,
+            String dataSource,
+            String formatHint,
+            @NonNull Map<String, String> httpHeaders,
+            VideoPlayerOptions options) {
         this.eventChannel = eventChannel;
         this.textureEntry = textureEntry;
         this.options = options;
 
-        this.exoPlayer = new ExoPlayer.Builder(context).build();
+        exoPlayer = new ExoPlayer.Builder(context).build();
         Uri uri = Uri.parse(dataSource);
 
         buildHttpDataSourceFactory(httpHeaders);
         DataSource.Factory dataSourceFactory =
-            new DefaultDataSource.Factory(context, httpDataSourceFactory);
+                new DefaultDataSource.Factory(context, httpDataSourceFactory);
 
+        // ✅ FIXED: Restored buildMediaSource call so video actually loads
         MediaSource mediaSource = buildMediaSource(uri, dataSourceFactory, formatHint);
 
         exoPlayer.setMediaSource(mediaSource);
@@ -92,226 +91,53 @@ final class VideoPlayer {
 
         setUpVideoPlayer(exoPlayer, new QueuingEventSink());
 
-        // ✅ FIX LINE 50: Check enableMuxAnalytics header, NOT "vtt" (vtt is video title!)
+        // ✅ MUX Initialization logic
         if (Objects.equals(httpHeaders.get("enableMuxAnalytics"), "true")) {
             initializeMUXDataAnalytics(context, uri.toString(), httpHeaders);
         }
     }
 
-    // NOTE: buildHttpDataSourceFactory and buildMediaSource methods should exist in the original file
-    // If they don't exist, you need to add them. These are helper methods for creating data sources.
-    // For now, adding placeholder implementations:
+    @VisibleForTesting
+    public void buildHttpDataSourceFactory(@NonNull Map<String, String> httpHeaders) {
+        final boolean httpHeadersNotEmpty = !httpHeaders.isEmpty();
+        final String userAgent =
+                httpHeadersNotEmpty && httpHeaders.containsKey(USER_AGENT)
+                        ? httpHeaders.get(USER_AGENT)
+                        : "ExoPlayer";
 
-    private void buildHttpDataSourceFactory(Map<String, String> httpHeaders) {
-        httpDataSourceFactory.setUserAgent(USER_AGENT);
-        httpDataSourceFactory.setDefaultRequestProperties(httpHeaders);
+        httpDataSourceFactory.setUserAgent(userAgent).setAllowCrossProtocolRedirects(true);
+
+        if (httpHeadersNotEmpty) {
+            httpDataSourceFactory.setDefaultRequestProperties(httpHeaders);
+        }
     }
 
-    private MediaSource buildMediaSource(Uri uri, DataSource.Factory dataSourceFactory, String formatHint) {
-        // This is a simplified version - you may need to implement full logic based on formatHint
-        // Check your original VideoPlayer.java for the complete implementation
-        return new ProgressiveMediaSource.Factory(dataSourceFactory)
-            .createMediaSource(uri);
-    }
-
-    private void setAudioAttributes(ExoPlayer exoPlayer, boolean mixWithOthers) {
-        AudioAttributes audioAttributes = new AudioAttributes.Builder()
-            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
-            .setUsage(C.USAGE_MEDIA)
-            .build();
-        exoPlayer.setAudioAttributes(audioAttributes, !mixWithOthers);
-    }
-
-    private void initializeMUXDataAnalytics(Context context, String videoURL, Map<String, String> headers) {
-        // ✅ FIX 1: Get and Validate Mux Environment Key (NOT hardcoded)
-        String muxEnvKey = headers.get("muxEnvKey");
-        if (muxEnvKey == null || muxEnvKey.isEmpty()) {
-            Log.e("VideoPlayer", "Mux SDK: ❌ Environment key not found in headers");
-            Log.e("VideoPlayer", "Mux SDK: Available headers: " + headers.keySet());
-            return;
-        }
-
-        Log.d("VideoPlayer", "Mux SDK: Initializing with env key: " +
-            muxEnvKey.substring(0, Math.min(10, muxEnvKey.length())) + "...");
-
-        // ✅ FIX 2: Initialize Video Data - Check SHORT CODES first (what Flutter sends)
-        CustomerVideoData videoData = new CustomerVideoData();
-
-        // Video Title: Flutter sends "vtt" (short code), NOT "videoTitle"
-        String videoTitle = headers.get("vtt");  // ✅ Primary: short code
-        if (videoTitle == null || videoTitle.isEmpty()) {
-            videoTitle = headers.get("videoTitle");  // Fallback: readable name
-        }
-        if (videoTitle == null || videoTitle.isEmpty()) {
-            videoTitle = headers.get("cvd_video_title");  // Alternative format
-        }
-        videoData.setVideoTitle(videoTitle != null ? videoTitle : "STAGE-ANDROID");
-
-        // Video Source URL
-        videoData.setVideoSourceUrl(videoURL);
-
-        // ✅ FIX 3: Video ID - Flutter sends "vid" (short code)
-        String videoId = headers.get("vid");  // ✅ Primary: short code
-        if (videoId == null || videoId.isEmpty()) {
-            videoId = headers.get("videoId");  // Fallback
-        }
-        if (videoId == null || videoId.isEmpty()) {
-            videoId = headers.get("cvd_video_id");  // Alternative format
-        }
-        if (videoId != null && !videoId.isEmpty()) {
-            videoData.setVideoId(videoId);
-        }
-
-        // ✅ FIX 4: Video Duration - Flutter sends "vdu" (short code)
-        String videoDuration = headers.get("vdu");
-        if (videoDuration != null && !videoDuration.isEmpty()) {
-            try {
-                videoData.setVideoDuration(Long.parseLong(videoDuration));
-            } catch (NumberFormatException e) {
-                Log.w("VideoPlayer", "Mux SDK: Invalid video duration: " + videoDuration);
-            }
-        }
-
-        // ✅ FIX 5: Video Content Type - Flutter sends "vctty" (short code)
-        String contentType = headers.get("vctty");
-        if (contentType != null && !contentType.isEmpty()) {
-            videoData.setVideoContentType(contentType);
-        }
-
-        // ✅ FIX 6: Video Stream Type - Flutter sends "vsmty" (short code)
-        String streamType = headers.get("vsmty");
-        if (streamType != null && !streamType.isEmpty()) {
-            videoData.setVideoStreamType(streamType);
-        }
-
-        // ✅ FIX 7: Video Series - Flutter sends "vsr" (short code)
-        String videoSeries = headers.get("vsr");
-        if (videoSeries != null && !videoSeries.isEmpty()) {
-            videoData.setVideoSeries(videoSeries);
-        }
-
-        // ✅ FIX 8: Set View Data - Flutter sends "xseid" (short code), NOT "sessionID"
-        CustomerViewData viewData = new CustomerViewData();
-
-        // View Session ID: Flutter sends "xseid" (short code)
-        String viewSessionId = headers.get("xseid");  // ✅ Primary: short code
-        if (viewSessionId == null || viewSessionId.isEmpty()) {
-            viewSessionId = headers.get("viewSessionId");  // Fallback
-        }
-        if (viewSessionId == null || viewSessionId.isEmpty()) {
-            viewSessionId = headers.get("sessionID");  // Legacy fallback
-        }
-
-        if (viewSessionId != null && !viewSessionId.isEmpty()) {
-            viewData.setViewSessionId(viewSessionId);
+    private MediaSource buildMediaSource(
+            Uri uri, DataSource.Factory mediaDataSourceFactory, String formatHint) {
+        int type;
+        if (formatHint == null) {
+            type = Util.inferContentType(uri);
         } else {
-            // Generate session ID if not provided
-            viewSessionId = String.valueOf(System.currentTimeMillis());
-            viewData.setViewSessionId(viewSessionId);
-            Log.w("VideoPlayer", "Mux SDK: Generated session ID: " + viewSessionId);
-        }
-
-        // ✅ FIX 9: View Client Application Version - Flutter sends "xcialve" (short code)
-        String appVersion = headers.get("xcialve");
-        if (appVersion != null && !appVersion.isEmpty()) {
-            // Note: setViewClientApplicationVersion might not exist in all Mux SDK versions
-            // If this causes an error, remove this line or check Mux SDK documentation
-            try {
-                viewData.setViewClientApplicationVersion(appVersion);
-            } catch (Exception e) {
-                Log.w("VideoPlayer", "Mux SDK: setViewClientApplicationVersion not available: " + e.getMessage());
+            switch (formatHint) {
+                case FORMAT_SS: type = C.CONTENT_TYPE_SS; break;
+                case FORMAT_DASH: type = C.CONTENT_TYPE_DASH; break;
+                case FORMAT_HLS: type = C.CONTENT_TYPE_HLS; break;
+                case FORMAT_OTHER: type = C.CONTENT_TYPE_OTHER; break;
+                default: type = -1; break;
             }
         }
-
-        // ✅ FIX 10: Set Custom Data - Flutter sends "c1", "c2", "c3", "c4", "c5" (short codes)
-        CustomData customData = new CustomData();
-
-        // Custom Data 1 (User ID): Flutter sends "c1" (short code)
-        String c1 = headers.get("c1");  // ✅ Primary: short code
-        if (c1 == null || c1.isEmpty()) {
-            c1 = headers.get("customData1");  // Fallback: readable name
-        }
-        if (c1 == null || c1.isEmpty()) {
-            c1 = headers.get("cd_1");  // Alternative format
-        }
-        if (c1 != null && !c1.isEmpty()) {
-            customData.setCustomData1(c1);
-        }
-
-        // Custom Data 2 (Subscription Status): Flutter sends "c2" (short code)
-        String c2 = headers.get("c2");  // ✅ Primary: short code
-        if (c2 == null || c2.isEmpty()) {
-            c2 = headers.get("customData2");  // Fallback
-        }
-        if (c2 == null || c2.isEmpty()) {
-            c2 = headers.get("cd_2");  // Alternative format
-        }
-        if (c2 != null && !c2.isEmpty()) {
-            customData.setCustomData2(c2);
-        }
-
-        // Custom Data 3 (Content ID): Flutter sends "c3" (short code)
-        String c3 = headers.get("c3");  // ✅ Primary: short code
-        if (c3 == null || c3.isEmpty()) {
-            c3 = headers.get("customData3");  // Fallback
-        }
-        if (c3 == null || c3.isEmpty()) {
-            c3 = headers.get("cd_3");  // Alternative format
-        }
-        if (c3 != null && !c3.isEmpty()) {
-            customData.setCustomData3(c3);
-        }
-
-        // Custom Data 4 (Platform): Flutter sends "c4" (short code)
-        String c4 = headers.get("c4");  // ✅ Primary: short code
-        if (c4 == null || c4.isEmpty()) {
-            c4 = headers.get("customData4");  // Fallback
-        }
-        if (c4 == null || c4.isEmpty()) {
-            c4 = headers.get("cd_4");  // Alternative format
-        }
-        if (c4 != null && !c4.isEmpty()) {
-            customData.setCustomData4(c4);
-        }
-
-        // Custom Data 5 (Decoder Name): Flutter sends "c5" (short code)
-        String c5 = headers.get("c5");  // ✅ Primary: short code
-        if (c5 == null || c5.isEmpty()) {
-            c5 = headers.get("customData5");  // Fallback
-        }
-        if (c5 == null || c5.isEmpty()) {
-            c5 = headers.get("cd_5");  // Alternative format
-        }
-        if (c5 != null && !c5.isEmpty()) {
-            customData.setCustomData5(c5);
-        }
-
-        // Update the main customerData object
-        customerData.setCustomerVideoData(videoData);
-        customerData.setCustomerViewData(viewData);
-        customerData.setCustomData(customData);
-
-        // ✅ FIX 11: Initialize Mux Player Monitor with error handling
-        try {
-            muxStatsExoPlayer = new MuxStatsExoPlayer(
-                context,
-                muxEnvKey,  // ✅ Use muxEnvKey from headers, NOT hardcoded
-                exoPlayer,
-                customerData
-            );
-
-            Log.d("VideoPlayer", "Mux SDK: ✅ Successfully initialized");
-            Log.d("VideoPlayer", "Mux SDK: Video Title: " + videoData.getVideoTitle());
-            Log.d("VideoPlayer", "Mux SDK: View Session ID: " + viewData.getViewSessionId());
-            Log.d("VideoPlayer", "Mux SDK: Video ID: " + (videoId != null ? videoId : "N/A"));
-            Log.d("VideoPlayer", "Mux SDK: Custom Data 1 (User ID): " + (c1 != null ? c1 : "N/A"));
-            Log.d("VideoPlayer", "Mux SDK: Custom Data 2 (Subscription): " + (c2 != null ? c2 : "N/A"));
-
-        } catch (Exception e) {
-            Log.e("VideoPlayer", "Mux SDK: ❌ Failed to initialize", e);
-            Log.e("VideoPlayer", "Mux SDK: Error details: " + e.getMessage());
-            e.printStackTrace();
-            muxStatsExoPlayer = null;
+        switch (type) {
+            case C.CONTENT_TYPE_SS:
+                return new SsMediaSource.Factory(new DefaultSsChunkSource.Factory(mediaDataSourceFactory), mediaDataSourceFactory)
+                        .createMediaSource(MediaItem.fromUri(uri));
+            case C.CONTENT_TYPE_DASH:
+                return new DashMediaSource.Factory(new DefaultDashChunkSource.Factory(mediaDataSourceFactory), mediaDataSourceFactory)
+                        .createMediaSource(MediaItem.fromUri(uri));
+            case C.CONTENT_TYPE_HLS:
+                return new HlsMediaSource.Factory(mediaDataSourceFactory).createMediaSource(MediaItem.fromUri(uri));
+            case C.CONTENT_TYPE_OTHER:
+                return new ProgressiveMediaSource.Factory(mediaDataSourceFactory).createMediaSource(MediaItem.fromUri(uri));
+            default: throw new IllegalStateException("Unsupported type: " + type);
         }
     }
 
@@ -320,84 +146,143 @@ final class VideoPlayer {
         this.eventSink = eventSink;
 
         eventChannel.setStreamHandler(
-            new EventChannel.StreamHandler() {
-                @Override
-                public void onListen(Object o, EventChannel.EventSink sink) {
-                    eventSink.setDelegate(sink);
-                }
+                new EventChannel.StreamHandler() {
+                    @Override
+                    public void onListen(Object o, EventChannel.EventSink sink) {
+                        eventSink.setDelegate(sink);
+                    }
 
-                @Override
-                public void onCancel(Object o) {
-                    eventSink.setDelegate(null);
-                }
-            });
+                    @Override
+                    public void onCancel(Object o) {
+                        eventSink.setDelegate(null);
+                    }
+                });
 
         surface = new Surface(textureEntry.surfaceTexture());
         exoPlayer.setVideoSurface(surface);
         setAudioAttributes(exoPlayer, options.mixWithOthers);
 
-        exoPlayer.addListener(new Player.Listener() {
-            // ... existing listener implementation ...
-        });
+        exoPlayer.addListener(
+                new Player.Listener() {
+                    @Override
+                    public void onPlaybackStateChanged(final int playbackState) {
+                        if (playbackState == Player.STATE_BUFFERING) {
+                            sendBufferingUpdate();
+                            Map<String, Object> event = new HashMap<>();
+                            event.put("event", "bufferingStart");
+                            eventSink.success(event);
+                        } else if (playbackState == Player.STATE_READY) {
+                            if (!isInitialized) {
+                                isInitialized = true;
+                                sendInitialized();
+                            }
+                            Map<String, Object> event = new HashMap<>();
+                            event.put("event", "bufferingEnd");
+                            eventSink.success(event);
+                        } else if (playbackState == Player.STATE_ENDED) {
+                            Map<String, Object> event = new HashMap<>();
+                            event.put("event", "completed");
+                            eventSink.success(event);
+                        }
+                    }
+
+                    @Override
+                    public void onPlayerError(@NonNull final PlaybackException error) {
+                        if (eventSink != null) {
+                            eventSink.error("VideoError", "Video player had error: " + error.getLocalizedMessage(), null);
+                        }
+                    }
+                });
     }
 
-    // Required methods for VideoPlayerPlugin
-    void play() {
-        exoPlayer.setPlayWhenReady(true);
-    }
+    private void initializeMUXDataAnalytics(Context context, String videoURL, Map<String, String> headers) {
+        String muxEnvKey = headers.get("muxEnvKey");
+        if (muxEnvKey == null || muxEnvKey.isEmpty()) {
+            Log.e("VideoPlayer", "Mux SDK: ❌ Environment key not found in headers");
+            return;
+        }
 
-    void pause() {
-        exoPlayer.setPlayWhenReady(false);
-    }
+        CustomerVideoData videoData = new CustomerVideoData();
+        String videoTitle = headers.get("vtt");
+        if (videoTitle == null || videoTitle.isEmpty()) videoTitle = headers.get("videoTitle");
+        videoData.setVideoTitle(videoTitle != null ? videoTitle : "STAGE-ANDROID");
+        videoData.setVideoSourceUrl(videoURL);
 
-    void setLooping(boolean looping) {
-        exoPlayer.setRepeatMode(looping ? Player.REPEAT_MODE_ONE : Player.REPEAT_MODE_OFF);
-    }
+        CustomerViewData viewData = new CustomerViewData();
+        String viewSessionId = headers.get("xseid");
+        if (viewSessionId != null) viewData.setViewSessionId(viewSessionId);
 
-    void setVolume(double volume) {
-        exoPlayer.setVolume((float) volume);
-    }
+        CustomData customData = new CustomData();
+        customData.setCustomData1(headers.get("c1"));
+        customData.setCustomData2(headers.get("c2"));
+        customData.setCustomData3(headers.get("c3"));
 
-    void setPlaybackSpeed(double speed) {
-        PlaybackParameters params = new PlaybackParameters((float) speed);
-        exoPlayer.setPlaybackParameters(params);
-    }
+        customerData.setCustomerVideoData(videoData);
+        customerData.setCustomerViewData(viewData);
+        customerData.setCustomData(customData);
 
-    long getPosition() {
-        return exoPlayer.getCurrentPosition();
-    }
-
-    void seekTo(int position) {
-        exoPlayer.seekTo(position);
+        try {
+            muxStatsExoPlayer = new MuxStatsExoPlayer(context, muxEnvKey, exoPlayer, customerData);
+            Log.d("VideoPlayer", "Mux SDK: ✅ Successfully initialized");
+        } catch (Exception e) {
+            Log.e("VideoPlayer", "Mux SDK: ❌ Failed to initialize", e);
+        }
     }
 
     void sendBufferingUpdate() {
-        // This method is called by VideoPlayerPlugin to send buffering updates
-        // Implementation depends on your event sink setup
+        Map<String, Object> event = new HashMap<>();
+        event.put("event", "bufferingUpdate");
+        List<? extends Number> range = Arrays.asList(0, exoPlayer.getBufferedPosition());
+        event.put("values", Collections.singletonList(range));
+        eventSink.success(event);
+    }
+
+    private static void setAudioAttributes(ExoPlayer exoPlayer, boolean isMixMode) {
+        exoPlayer.setAudioAttributes(
+                new AudioAttributes.Builder().setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
+                !isMixMode);
+    }
+
+    void play() { exoPlayer.setPlayWhenReady(true); }
+    void pause() { exoPlayer.setPlayWhenReady(false); }
+    void setLooping(boolean value) { exoPlayer.setRepeatMode(value ? REPEAT_MODE_ALL : REPEAT_MODE_OFF); }
+    void setVolume(double value) { exoPlayer.setVolume((float) Math.max(0.0, Math.min(1.0, value))); }
+    void setPlaybackSpeed(double value) { exoPlayer.setPlaybackParameters(new PlaybackParameters(((float) value))); }
+    void seekTo(int location) { exoPlayer.seekTo(location); }
+    long getPosition() { return exoPlayer.getCurrentPosition(); }
+
+    void sendInitialized() {
+        if (isInitialized) {
+            Map<String, Object> event = new HashMap<>();
+            event.put("event", "initialized");
+            event.put("duration", exoPlayer.getDuration());
+            if (exoPlayer.getVideoFormat() != null) {
+                Format videoFormat = exoPlayer.getVideoFormat();
+                int width = videoFormat.width;
+                int height = videoFormat.height;
+                int rotationDegrees = videoFormat.rotationDegrees;
+                if (rotationDegrees == 90 || rotationDegrees == 270) {
+                    width = videoFormat.height;
+                    height = videoFormat.width;
+                }
+                event.put("width", width);
+                event.put("height", height);
+                if (rotationDegrees == 180) event.put("rotationCorrection", 180);
+            }
+            eventSink.success(event);
+        }
     }
 
     void dispose() {
         if (muxStatsExoPlayer != null) {
-            try {
-                muxStatsExoPlayer.release();
-                Log.d("VideoPlayer", "Mux SDK: ✅ Released successfully");
-            } catch (Exception e) {
-                Log.e("VideoPlayer", "Mux SDK: ❌ Error releasing", e);
-            }
-            muxStatsExoPlayer = null;
+            muxStatsExoPlayer.release();
         }
-
         if (isInitialized) {
             exoPlayer.stop();
         }
         textureEntry.release();
         eventChannel.setStreamHandler(null);
-        if (surface != null) {
-            surface.release();
-        }
-        if (exoPlayer != null) {
-            exoPlayer.release();
-        }
+        if (surface != null) surface.release();
+        if (exoPlayer != null) exoPlayer.release();
     }
 }
-
