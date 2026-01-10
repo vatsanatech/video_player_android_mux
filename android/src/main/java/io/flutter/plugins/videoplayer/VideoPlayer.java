@@ -28,6 +28,7 @@ import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultDataSource;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
 import com.google.android.exoplayer2.util.Util;
+import com.mux.stats.sdk.core.model.CustomData;
 import com.mux.stats.sdk.core.model.CustomerData;
 import com.mux.stats.sdk.core.model.CustomerVideoData;
 import com.mux.stats.sdk.core.model.CustomerViewData;
@@ -210,14 +211,18 @@ final class VideoPlayer {
         String viewSessionId = headers.get("xseid");
         if (viewSessionId != null) viewData.setViewSessionId(viewSessionId);
 
-
+        CustomData customData = new CustomData();
+        customData.setCustomData1(headers.get("c1"));
+        customData.setCustomData2(headers.get("c2"));
+        customData.setCustomData3(headers.get("c3"));
 
         customerData.setCustomerVideoData(videoData);
         customerData.setCustomerViewData(viewData);
+        customerData.setCustomData(customData);
 
         try {
             muxStatsExoPlayer = new MuxStatsExoPlayer(context, muxEnvKey, exoPlayer, customerData);
-                Log.d("VideoPlayer--", "Mux SDK: ✅ Successfully initialized");
+            Log.d("VideoPlayer", "Mux SDK: ✅ Successfully initialized");
         } catch (Exception e) {
             Log.e("VideoPlayer", "Mux SDK: ❌ Failed to initialize", e);
         }
