@@ -6,9 +6,6 @@ buildscript {
     repositories {
         google()
         mavenCentral()
-        maven {
-            url "https://muxinc.jfrog.io/artifactory/default-maven-release-local"
-        }
     }
 
     dependencies {
@@ -20,9 +17,6 @@ rootProject.allprojects {
     repositories {
         google()
         mavenCentral()
-          maven {
-            url "https://muxinc.jfrog.io/artifactory/default-maven-release-local"
-        }
     }
 }
 
