@@ -29,7 +29,7 @@ import com.google.android.exoplayer2.upstream.DefaultDataSource;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
 import com.google.android.exoplayer2.util.Util;
 import com.mux.stats.sdk.core.model.CustomData;
-import com.mux.stats.sdk.core.model.CustomerData;
+import com.mux.stats.sdk.core.model.CcustomerData;
 import com.mux.stats.sdk.core.model.CustomerVideoData;
 import com.mux.stats.sdk.core.model.CustomerViewData;
 import com.mux.stats.sdk.muxstats.MuxStatsExoPlayer;
