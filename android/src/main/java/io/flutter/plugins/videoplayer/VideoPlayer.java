@@ -204,7 +204,7 @@ final class VideoPlayer {
         CustomerVideoData videoData = new CustomerVideoData();
         String videoTitle = headers.get("vtt");
         if (videoTitle == null || videoTitle.isEmpty()) videoTitle = headers.get("videoTitle");
-        videoData.setVideoTitle(videoTitle != null ? videoTitle : "STAGE-ANDROID");
+        videoData.setVideoTitle(videoTitle != null ? videoTitle : "Video");
         videoData.setVideoSourceUrl(videoURL);
 
         CustomerViewData viewData = new CustomerViewData();
