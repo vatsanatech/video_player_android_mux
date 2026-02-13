@@ -207,6 +207,7 @@ final class VideoPlayer {
         videoData.setVideoTitle(videoTitle != null ? videoTitle : "Video");
         videoData.setVideoSourceUrl(videoURL);
         videoData.setVideoContentType(headers.get("videoContentType"));
+        videoData.setVideoShowId(headers.get("videoShowId"));
 
 
         CustomerViewData viewData = new CustomerViewData();
