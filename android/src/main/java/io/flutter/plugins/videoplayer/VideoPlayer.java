@@ -219,6 +219,7 @@ final class VideoPlayer {
         customData.setCustomData2(headers.get("c2"));
         customData.setCustomData3(headers.get("c3"));
         customData.setCustomData4(headers.get("c4"));
+        customData.setCustomData7(headers.get("c7"));
 
 
         customerData.setCustomerVideoData(videoData);
