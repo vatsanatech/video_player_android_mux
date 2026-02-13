@@ -206,11 +206,8 @@ final class VideoPlayer {
         if (videoTitle == null || videoTitle.isEmpty()) videoTitle = headers.get("videoTitle");
         videoData.setVideoTitle(videoTitle != null ? videoTitle : "Video");
         videoData.setVideoSourceUrl(videoURL);
+        videoData.setVideoContentType(headers.get("videoContentType"));
 
-        // Content Type - NEW                                                                                                                                                         
-        String contentType = headers.get("vctty");                                                                                                                                    
-        if (contentType == null || contentType.isEmpty()) contentType = headers.get("videoContentType");                                                                              
-        if (contentType != null) videoData.setVideoContentType(contentType);  
 
         CustomerViewData viewData = new CustomerViewData();
         String viewSessionId = headers.get("xseid");
