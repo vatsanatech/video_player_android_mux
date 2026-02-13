@@ -206,7 +206,8 @@ final class VideoPlayer {
         if (videoTitle == null || videoTitle.isEmpty()) videoTitle = headers.get("videoTitle");
         videoData.setVideoTitle(videoTitle != null ? videoTitle : "Video");
         videoData.setVideoSourceUrl(videoURL);
-        videoData.setVideoContentType(headers.get("videoContentType"));
+        String videoContentType = headers.get("vctty");
+        videoData.setVideoContentType(headers.get(videoContentType));
 
         CustomerViewData viewData = new CustomerViewData();
         String viewSessionId = headers.get("xseid");
