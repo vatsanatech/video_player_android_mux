@@ -214,6 +214,10 @@ final class VideoPlayer {
         if (videoId == null || videoId.isEmpty()) videoId = headers.get("videoId");
         videoData.setVideoId(videoId);
 
+        String videoSeries = headers.get("vsr");
+        if (videoSeries == null || videoSeries.isEmpty()) videoSeries = headers.get("videoSeries");
+        videoData.setVideoSeries(videoSeries);
+
         CustomerViewData viewData = new CustomerViewData();
         String viewSessionId = headers.get("xseid");
         if (viewSessionId != null) viewData.setViewSessionId(viewSessionId);
